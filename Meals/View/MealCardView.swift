@@ -18,7 +18,7 @@ struct MealCardView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 25)
                 .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.black.opacity(0.2), radius: 4, x: 0, y: 2)
             
             HStack {
                 if let cachedImage = ImageCache.shared.object(forKey: meal.strMealThumb as NSString) {

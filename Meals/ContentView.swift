@@ -51,9 +51,24 @@ struct ContentView: View {
             .searchable(text: $searchText, prompt: "Search desserts")
             .onAppear() {
                 viewModel.setModelContext(modelContext)
-                Task {
-                    await viewModel.refreshMeals()
-                }
+            }
+            .task {
+                await viewModel.refreshMeals()
+            }
+            .alert(isPresented: Binding<Bool>(
+                get: { viewModel.errorMessage != nil },
+                set: { _ in viewModel.errorMessage = nil }
+            )) {
+                Alert(
+                    title: Text("Error"),
+                    message: Text(viewModel.errorMessage ?? "Unknown error"),
+                    primaryButton: .default(Text("Retry")) {
+                        Task {
+                            await viewModel.refreshMeals()
+                        }
+                    },
+                    secondaryButton: .cancel()
+                )
             }
         }
     }

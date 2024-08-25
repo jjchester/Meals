@@ -15,10 +15,11 @@ enum APIError: Error {
 
 class APIService {
     static let shared = APIService()
+    private let baseURL = "https://themealdb.com/api/json/v1/1"
     private init() {}
 
     func fetchDessertMeals() async throws -> [Meal] {
-        guard let url = URL(string: "https://themealdb.com/api/json/v1/1/filter.php?c=Dessert") else {
+        guard let url = URL(string: "\(baseURL)/filter.php?c=Dessert") else {
             throw APIError.invalidURL
         }
 
@@ -33,7 +34,7 @@ class APIService {
     }
 
     func fetchMealDetails(mealID: String) async throws -> MealDetail {
-        guard let url = URL(string: "https://themealdb.com/api/json/v1/1/lookup.php?i=\(mealID)") else {
+        guard let url = URL(string: "\(baseURL)/lookup.php?i=\(mealID)") else {
             throw APIError.invalidURL
         }
 

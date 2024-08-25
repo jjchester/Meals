@@ -12,7 +12,8 @@ import SwiftData
 class MealsViewModel: ObservableObject {
     @Published var meals: [Meal] = []
     @Published var selectedMeal: MealDetail?
-    
+    @Published var errorMessage: String? = nil
+
     private var modelContext: ModelContext?
     
     func setModelContext(_ context: ModelContext) {
@@ -26,10 +27,10 @@ class MealsViewModel: ObservableObject {
     private func loadStoredMeals() {
         guard let modelContext = modelContext else { return }
         do {
-            let descriptor = FetchDescriptor<Meal>(sortBy: [SortDescriptor(\.strMeal)])
-            self.meals = try modelContext.fetch(descriptor)
+            let fetchedMeals = try fetchStoredMeals(from: modelContext)
+            setMeals(fetchedMeals)
         } catch {
-            print("Failed to fetch stored meals: \(error)")
+            handleError("Failed to fetch stored meals.")
         }
     }
     
@@ -37,37 +38,11 @@ class MealsViewModel: ObservableObject {
         guard let modelContext = modelContext else { return }
         do {
             let fetchedMeals = try await APIService.shared.fetchDessertMeals()
-            
-            // Fetch all existing meals
-            let descriptor = FetchDescriptor<Meal>()
-            let existingMeals = try modelContext.fetch(descriptor)
-            
-            var updatedMeals: [Meal] = []
-            
-            for fetchedMeal in fetchedMeals {
-                // If we find an exisitng meal, update it with new info, and if not, create a new meal entry
-                if let existingMeal = existingMeals.first(where: { $0.idMeal == fetchedMeal.idMeal }) {
-                    existingMeal.strMeal = fetchedMeal.strMeal
-                    existingMeal.strMealThumb = fetchedMeal.strMealThumb
-                    updatedMeals.append(existingMeal)
-                } else {
-                    let newMeal = Meal(idMeal: fetchedMeal.idMeal, strMeal: fetchedMeal.strMeal, strMealThumb: fetchedMeal.strMealThumb)
-                    modelContext.insert(newMeal)
-                    updatedMeals.append(newMeal)
-                }
-            }
-            
-            // Save changes
-            try modelContext.save()
-            
-            // Update published property
-            self.meals = updatedMeals
-            
-            for meal in self.meals {
-                preloadImage(for: meal)
-            }
+            let updatedMeals = try updateMeals(with: fetchedMeals, in: modelContext)
+            setMeals(updatedMeals)
+            preloadImages(for: updatedMeals)
         } catch {
-            print("Failed to refresh meals: \(error)")
+            handleError("Failed to fetch meals.")
         }
     }
     
@@ -75,18 +50,44 @@ class MealsViewModel: ObservableObject {
         do {
             selectedMeal = try await APIService.shared.fetchMealDetails(mealID: mealID)
         } catch {
-            print("Failed to load meal details: \(error)")
+            handleError("Failed to load meal details.")
         }
+    }
+    
+    private func fetchStoredMeals(from context: ModelContext) throws -> [Meal] {
+        let descriptor = FetchDescriptor<Meal>(sortBy: [SortDescriptor(\.strMeal)])
+        return try context.fetch(descriptor)
+    }
+    
+    private func updateMeals(with fetchedMeals: [Meal], in context: ModelContext) throws -> [Meal] {
+        let existingMeals = try fetchStoredMeals(from: context)
+        var updatedMeals: [Meal] = []
+
+        for fetchedMeal in fetchedMeals {
+            if let existingMeal = existingMeals.first(where: { $0.idMeal == fetchedMeal.idMeal }) {
+                existingMeal.strMeal = fetchedMeal.strMeal
+                existingMeal.strMealThumb = fetchedMeal.strMealThumb
+                updatedMeals.append(existingMeal)
+            } else {
+                let newMeal = Meal(idMeal: fetchedMeal.idMeal, strMeal: fetchedMeal.strMeal, strMealThumb: fetchedMeal.strMealThumb)
+                context.insert(newMeal)
+                updatedMeals.append(newMeal)
+            }
+        }
+
+        try context.save()
+        return updatedMeals
+    }
+
+    private func preloadImages(for meals: [Meal]) {
+        meals.forEach { preloadImage(for: $0) }
     }
     
     private func preloadImage(for meal: Meal) {
         guard let url = URL(string: meal.strMealThumb) else { return }
-        
-        // Return if image exists in cache
-        if let _ = ImageCache.shared.object(forKey: url.absoluteString as NSString) {
+        if ImageCache.shared.object(forKey: url.absoluteString as NSString) != nil {
             return
         }
-        
         Task {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
@@ -97,5 +98,15 @@ class MealsViewModel: ObservableObject {
                 print("Failed to load image: \(error)")
             }
         }
+    }
+    
+    private func setMeals(_ meals: [Meal]) {
+        self.meals = meals
+        self.errorMessage = nil
+    }
+    
+    private func handleError(_ message: String) {
+        self.errorMessage = message
+        print(message)
     }
 }
