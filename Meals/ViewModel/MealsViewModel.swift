@@ -12,9 +12,8 @@ import SwiftData
 class MealsViewModel: ObservableObject {
     @Published var meals: [Meal] = []
     @Published var favorites: [String] = []
-    @Published var selectedMeal: MealDetail?
     @Published var errorMessage: String? = nil
-
+    
     private var modelContext: ModelContext?
     private let favoritesKey = "favoriteMealIds"
 
@@ -49,11 +48,13 @@ class MealsViewModel: ObservableObject {
         }
     }
     
-    func loadMealDetails(mealID: String) async {
+    func loadMealDetails(mealID: String) async throws -> MealDetail? {
         do {
-            selectedMeal = try await APIService.shared.fetchMealDetails(mealID: mealID)
+            let details = try await APIService.shared.fetchMealDetails(mealID: mealID)
+            return details
         } catch {
-            handleError("Failed to load meal details.")
+            handleError("Failed to fetch meal details.")
+            return nil
         }
     }
     
@@ -120,6 +121,7 @@ class MealsViewModel: ObservableObject {
     
     private func saveFavorites() {
         UserDefaults.standard.set(favorites, forKey: favoritesKey)
+        loadFavorites()
     }
 
     func toggleFavorite(for mealID: String) {

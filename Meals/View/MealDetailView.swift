@@ -12,6 +12,8 @@ struct MealDetailView: View {
     let mealID: String
     let cachedImage: UIImage?
     private let columns = [GridItem(.adaptive(minimum: 150))]
+    @State private var mealDetail: MealDetail?
+    @State private var showingAlert: Bool = false
 
     public init(viewModel: MealsViewModel, mealID: String, cachedImage: UIImage?) {
         self.viewModel = viewModel
@@ -20,7 +22,7 @@ struct MealDetailView: View {
     }
     
     var body: some View {
-            if let meal = viewModel.selectedMeal {
+            if let meal = mealDetail {
                 ScrollView {
                     if let cachedImage = cachedImage {
                         ZStack(alignment: .bottomTrailing) {
@@ -90,10 +92,31 @@ struct MealDetailView: View {
                 Text(meal.strInstructions)
                     .padding(.horizontal)
             }
+            .alert(isPresented: $showingAlert) {
+                Alert(
+                    title: Text("Error"),
+                    message: Text(viewModel.errorMessage ?? "An error occurred."),
+                    dismissButton: .default(Text("Retry")) {
+                        Task {
+                            do {
+                                mealDetail = try await viewModel.loadMealDetails(mealID: mealID)
+                            } catch {
+                                showingAlert = true
+                            }
+                        }
+                    }
+                )
+            }
         } else {
             RecipeImageLoadingStateView()
-                .task {
-                    await viewModel.loadMealDetails(mealID: mealID)
+                .onAppear {
+                    Task {
+                        do {
+                            mealDetail = try await viewModel.loadMealDetails(mealID: mealID)
+                        } catch {
+                            showingAlert = true
+                        }
+                    }
                 }
         }
     }
