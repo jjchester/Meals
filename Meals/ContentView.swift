@@ -33,11 +33,11 @@ struct ContentView: View {
                 LazyVStack(alignment: .leading) {
                     ForEach(filteredMeals, id: \.idMeal) { meal in
                         NavigationLink(
-                            destination: MealDetailView(mealID: meal.idMeal, cachedImage: ImageCache.shared.object(forKey: meal.strMealThumb as NSString))
+                            destination: MealDetailView(viewModel: viewModel, mealID: meal.idMeal, cachedImage: ImageCache.shared.object(forKey: meal.strMealThumb as NSString))
                                 .navigationTitle("Details")
                                 .navigationBarTitleDisplayMode(.inline)
                         ) {
-                            MealCardView(meal: meal)
+                            MealCardView(viewModel: viewModel, meal: meal)
                         }
                         .buttonStyle(PlainButtonStyle())
                     }

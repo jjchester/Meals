@@ -11,14 +11,17 @@ import SwiftData
 @MainActor
 class MealsViewModel: ObservableObject {
     @Published var meals: [Meal] = []
+    @Published var favorites: [String] = []
     @Published var selectedMeal: MealDetail?
     @Published var errorMessage: String? = nil
 
     private var modelContext: ModelContext?
-    
+    private let favoritesKey = "favoriteMealIds"
+
     func setModelContext(_ context: ModelContext) {
         self.modelContext = context
         loadStoredMeals()
+        loadFavorites()
         Task {
             await refreshMeals()
         }
@@ -108,5 +111,27 @@ class MealsViewModel: ObservableObject {
     private func handleError(_ message: String) {
         self.errorMessage = message
         print(message)
+    }
+    
+    private func loadFavorites() {
+        let savedFavorites = UserDefaults.standard.array(forKey: favoritesKey) as? [String] ?? []
+        favorites = savedFavorites
+    }
+    
+    private func saveFavorites() {
+        UserDefaults.standard.set(favorites, forKey: favoritesKey)
+    }
+
+    func toggleFavorite(for mealID: String) {
+        if let index = favorites.firstIndex(of: mealID) {
+            favorites.remove(at: index)
+        } else {
+            favorites.append(mealID)
+        }
+        saveFavorites()
+    }
+    
+    func isFavorite(_ mealID: String) -> Bool {
+        return favorites.contains(mealID)
     }
 }

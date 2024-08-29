@@ -9,8 +9,10 @@ import SwiftUI
 
 struct MealCardView: View {
     private let meal: Meal
-    
-    public init(meal: Meal) {
+    @ObservedObject private var viewModel: MealsViewModel
+
+    public init(viewModel: MealsViewModel, meal: Meal) {
+        self.viewModel = viewModel
         self.meal = meal
     }
     
@@ -41,6 +43,13 @@ struct MealCardView: View {
                 Text(meal.strMeal)
                     .font(.headline)
                     .padding(.leading, 10)
+                Button(action: {
+                    viewModel.toggleFavorite(for: meal.idMeal)
+                }) {
+                    Image(systemName: viewModel.isFavorite(meal.idMeal) ? "heart.fill" : "heart")
+                        .foregroundColor(viewModel.isFavorite(meal.idMeal) ? .red : .gray)
+                }
+                .padding(.trailing, 10)
                 Spacer()
                 Image(systemName: "chevron.right")
             }
